@@ -13,6 +13,7 @@
 use super::settings::MetricsSettings;
 use crate::Result;
 use prometheus::{Encoder, TextEncoder};
+use prometheus_client::registry::Registry;
 use serde::Serialize;
 use std::any::TypeId;
 
@@ -196,22 +197,22 @@ pub fn collect(settings: &MetricsSettings) -> Result<String> {
 ///     let endpoint = Arc::new("http-over-tcp".to_owned());
 ///     let l4_protocol = labels::L4Protocol::Tcp;
 ///     let ingress_ip = "127.0.0.1".parse::<IpAddr>().unwrap();
-///     
+///
 ///     my_app_metrics::client_connections_total(
 ///         &endpoint,
 ///         l4_protocol,
 ///         ingress_ip,
 ///     ).inc();
-///     
+///
 ///     let client_connections_active = my_app_metrics::client_connections_active(
 ///         &endpoint,
 ///         l4_protocol,
 ///         labels::IpVersion::V4,
 ///         ingress_ip,
 ///     );
-///     
+///
 ///     client_connections_active.inc();
-///     
+///
 ///     my_app_metrics::proxy_status_serialization_error_count().inc();
 ///
 ///     client_connections_active.dec();
@@ -375,4 +376,25 @@ impl MetricConstructor<TimeHistogram> for HistogramBuilder {
     fn new_metric(&self) -> TimeHistogram {
         TimeHistogram::new(self.buckets.iter().cloned())
     }
+}
+
+/// Runs a closure with a prometheus [Registry] to enable registration of external metrics.
+///
+/// # Example
+///
+/// ```
+/// foundations::telemetry::metrics::with_registry(|registry| {
+///    let registry = registry.sub_registry_with_prefix("cache");
+///
+///    configuration_cache.register_metrics(registry.sub_registry_with_label((
+///      Cow::Borrowed("cache"),
+///      Cow::Borrowed("rulesets_configuration"),
+///   )));
+/// });
+/// ```
+pub fn with_registry<F>(f: F)
+where
+    F: FnOnce(&mut Registry) -> (),
+{
+    f(&mut Registries::get().main.write())
 }

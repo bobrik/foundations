@@ -14,7 +14,7 @@ static REGISTRIES: OnceCell<Registries> = OnceCell::new();
 
 #[doc(hidden)]
 pub struct Registries {
-    main: RwLock<Registry>,
+    pub(super) main: RwLock<Registry>,
     opt: RwLock<Registry>,
     pub(super) info: RwLock<HashMap<TypeId, Box<dyn ErasedInfoMetric>>>,
     extra_label: Option<(String, String)>,
