@@ -196,22 +196,22 @@ pub fn collect(settings: &MetricsSettings) -> Result<String> {
 ///     let endpoint = Arc::new("http-over-tcp".to_owned());
 ///     let l4_protocol = labels::L4Protocol::Tcp;
 ///     let ingress_ip = "127.0.0.1".parse::<IpAddr>().unwrap();
-///     
+///
 ///     my_app_metrics::client_connections_total(
 ///         &endpoint,
 ///         l4_protocol,
 ///         ingress_ip,
 ///     ).inc();
-///     
+///
 ///     let client_connections_active = my_app_metrics::client_connections_active(
 ///         &endpoint,
 ///         l4_protocol,
 ///         labels::IpVersion::V4,
 ///         ingress_ip,
 ///     );
-///     
+///
 ///     client_connections_active.inc();
-///     
+///
 ///     my_app_metrics::proxy_status_serialization_error_count().inc();
 ///
 ///     client_connections_active.dec();
@@ -374,5 +374,25 @@ impl MetricConstructor<Histogram> for HistogramBuilder {
 impl MetricConstructor<TimeHistogram> for HistogramBuilder {
     fn new_metric(&self) -> TimeHistogram {
         TimeHistogram::new(self.buckets.iter().cloned())
+    }
+}
+
+pub fn add_extra_metrics_producer<F>(f: F)
+where
+    F: Fn(&mut Vec<u8>) + Send + Sync + 'static,
+{
+    Registries::get().add_extra_producer(Box::new(f));
+}
+
+pub trait ExtraMetricsProducer: Send + Sync {
+    fn produce(&self, buffer: &mut Vec<u8>);
+}
+
+impl<F> ExtraMetricsProducer for F
+where
+    F: Fn(&mut Vec<u8>) + Send + Sync,
+{
+    fn produce(&self, buffer: &mut Vec<u8>) {
+        self(buffer)
     }
 }
